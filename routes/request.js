@@ -1,31 +1,43 @@
-const router=require("express").Router();
-const Request= require("../models/Request");
-const User=require("../models/User");
+const router = require("express").Router();
+const Request = require("../models/Request");
+const User = require("../models/User");
+var jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const req = require("express/lib/request");
 
+const JWT_SECRET = "HoneyPatel"
 // create Request
-router.post("/",[
+router.post("/", [
     body('start', 'Enter a valid start place').isLength({ min: 3 }),
-    body('end', 'Enter a valid end place').isLength({ min: 5}),
-    body('passengers', 'enter a valid passenger Number').isInt().isLength({max:10}),
-    body('vehicleNo', 'enter a valid vehicle number').isLength({min:8}),
-    body('vehicleType', 'enter a valid vehicle Type').isLength({max:10})
-],async(req,res)=>{
-    
+    body('end', 'Enter a valid end place').isLength({ min: 5 }),
+    body('passengers', 'enter a valid passenger Number').isInt().isLength({ max: 10 }),
+    body('vehicleNo', 'enter a valid vehicle number').isLength({ min: 8 }),
+    body('vehicleType', 'enter a valid vehicle Type').isLength({ max: 10 })
+], async (req, res) => {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ error: errors.array() });
     }
     try {
-        let request = await Request.findOne({ vehicleNo: req.body.vehicleNo});
+
+        let request = await Request.findOne({ vehicleNo: req.body.vehicleNo });
         if (request) {
             return res.status(400).json({ error: "sorry a user with this vehicle Number is already exists" });
         }
-        console.log(request)
-        const newRequest=new Request(req.body);
+        console.log(req.body)
+        const token =await req.header('Authorization').replace('Bearer ', '')
+        const data = jwt.verify(token, JWT_SECRET);
+        console.log(data);
+        console.log(req.body);
+        const newRequest = new Request({
+            ...req.body,
+            userId: data.user
+        })
         console.log(newRequest);
-        const savedRequest= await newRequest.save();
-        res.status(200).json(savedRequest)
+        const savedRequest = await newRequest.save();
+        console.log(savedRequest);
+        res.status(200).json(savedRequest);
     } catch (err) {
         console.log(err.message);
         res.status(500).json(err);
@@ -35,14 +47,14 @@ router.post("/",[
 
 
 // delete a Request
-router.delete("/:id",async (req,res)=>{
+router.delete("/:id", async (req, res) => {
     try {
-        const request=await Request.findById(req.params.id);
+        const request = await Request.findById(req.params.id);
 
-        if(request.userId===req.body.userId){
-           await request.deleteOne({$set:req.body});
-           res.status(200).json("Request has been deleted");
-        }else{
+        if (request.userId === req.body.userId) {
+            await request.deleteOne({ $set: req.body });
+            res.status(200).json("Request has been deleted");
+        } else {
             res.status(403).json("you can delete only your Request");
         }
     } catch (err) {
@@ -55,16 +67,21 @@ router.delete("/:id",async (req,res)=>{
 
 // accept a Request
 
-router.put("/:id/accept",async (req,res)=>{
-    try {
-        const request=await Request.findById(req.params.id);
-        if(!request.followers.includes(req.body.userId)){
-            await Request.updateOne({$push:{followers:req.body.userId}});
-            res.status(200).json("the Request has been accepted")
+router.put("/:id/accept", async (req, res) => {
+    try {        
+
+        const token = req.header('Authorization').replace('Bearer ', '')
+        const data = jwt.verify(token, JWT_SECRET);
+    
+        const request = await Request.findById(req.params.id);
+        const user= await User.findById(request.userId);
+        console.log(user);
+
+        if (!request.followers.includes(data.user)) {
+            await Request.updateOne({ $push: { followers: data.user } });
         }
-        else{
-            res.status(200).json("you have already accepted")
-        }
+
+        res.status(200).json({driver:user.contactNo})
     } catch (err) {
         console.log(err.message)
         res.status(500).json(err)
@@ -74,9 +91,9 @@ router.put("/:id/accept",async (req,res)=>{
 
 
 // get a Request
-router.get("/:id",async (req,res)=>{
+router.get("/:id", async (req, res) => {
     try {
-        const request=await Request.findById(req.params.id);
+        const request = await Request.findById(req.params.id);
         res.status(200).json(request);
     } catch (err) {
         res.status(500).json(err);
@@ -85,12 +102,11 @@ router.get("/:id",async (req,res)=>{
 
 
 // get timeline Requests
-router.get("/timeline/requests",async (req,res)=>{
-    try{
-        console.log(req.body)
-        const requests=await Request.find({start:req.body.start});
+router.post("/timeline/requests", async (req, res) => {
+    try {
+        const requests = await Request.find({ start: req.body.start });
         return res.status(200).json(requests);
-    }catch(err){
+    } catch (err) {
         console.log(err.message)
         res.status(500).json(err);
     }
@@ -109,4 +125,4 @@ router.get("/timeline/requests",async (req,res)=>{
 //     }
 // });
 
-module.exports=router;
+module.exports = router;
