@@ -40,18 +40,17 @@ router.post('/UserRegister', [
 
         const salt = await bcrypt.genSalt(10);
         secPassword = await bcrypt.hash(req.body.password, salt);
-        
-        const body={
+
+        const body = {
             name: req.body.name,
             password: secPassword,
             contactNo: req.body.contactNo,
         }
         if (req.body.licenseNo) {
             console.log("if works");
-            body.licenseNo= req.body.licenseNo
+            body.licenseNo = req.body.licenseNo
         }
         const user = await User.create(body)
-
         // const user = new User({
         //     name: req.body.name,
         //     password: secPassword,
@@ -62,7 +61,7 @@ router.post('/UserRegister', [
         // console.log(user)
         // await user.save();
         const data = {
-                id: user._id
+            id: user._id
         }
         const authToken = jwt.sign(data, JWT_SECRET);
         res.json({ authToken, user });
@@ -100,7 +99,7 @@ router.post('/UserLogin', [
             res.status(400).json({ errors: "please login with correct credentials/password wrong" });
         }
         const data = {
-                user: user._id
+            user: user._id
         }
 
         const authToken = jwt.sign(data, JWT_SECRET);
@@ -111,4 +110,35 @@ router.post('/UserLogin', [
         res.status(500).send("Internal error occur")
     }
 });
+
+
+
+
+// route3
+// add exernally licence no
+router.post('/UserLicence', async (req, res) => {
+    // if there are errors return the error and request
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+        const token = req.header('Authorization').replace('Bearer ', '')
+        const data = jwt.verify(token, JWT_SECRET);
+        console.log(data);
+        let user = await User.findOne({ licenseNo: req.body.license });
+        if (user) {
+            return res.status(400).json({ error: "sorry a user with this License Number is already exists" });
+        }
+        else {
+            user = await User.findByIdAndUpdate(data.user, { $set: { licenseNo: req.body.license } }, { new: true });
+        }
+        res.status(200).json({license:true});
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).send("Internal error occur")
+    }
+});
+
 module.exports = router

@@ -14,13 +14,12 @@ router.post("/", [
     body('vehicleNo', 'enter a valid vehicle number').isLength({ min: 8 }),
     body('vehicleType', 'enter a valid vehicle Type').isLength({ max: 10 })
 ], async (req, res) => {
-
+    console.log(req.body)
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ error: errors.array() });
     }
     try {
-
         let request = await Request.findOne({ vehicleNo: req.body.vehicleNo });
         if (request) {
             return res.status(400).json({ error: "sorry a user with this vehicle Number is already exists" });
@@ -80,8 +79,11 @@ router.put("/:id/accept", async (req, res) => {
         if (!request.followers.includes(data.user)) {
             await Request.updateOne({ $push: { followers: data.user } });
         }
-
-        res.status(200).json({driver:user.contactNo})
+        const driver={
+            contact:user.contactNo,
+            Name:user.name,
+        }
+        res.status(200).json(driver)
     } catch (err) {
         console.log(err.message)
         res.status(500).json(err)
@@ -104,8 +106,15 @@ router.get("/:id", async (req, res) => {
 // get timeline Requests
 router.post("/timeline/requests", async (req, res) => {
     try {
-        const requests = await Request.find({ start: req.body.start });
-        return res.status(200).json(requests);
+        if(req.body.start==="default"){
+            const requests=await Request.find().sort({date:-1});
+            return res.status(200).json(requests);
+        }
+        else{
+
+            const requests = await Request.find({ start: req.body.start }).sort({date:-1});
+            return res.status(200).json(requests);
+        }
     } catch (err) {
         console.log(err.message)
         res.status(500).json(err);
