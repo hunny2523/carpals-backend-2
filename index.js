@@ -9,7 +9,7 @@ app.use(cors({
   origin: 'http://localhost:3000'
 }));
 app.get('/', (req, res) => {
-  res.send('carpals backend heyyy')
+  res.send('carpals backend')
 });
 
 app.use('/api/auth', require('./routes/auth'));
