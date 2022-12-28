@@ -56,7 +56,7 @@ router.post('/UserRegister', [
             id: user._id
         }
         const authToken = jwt.sign(data, JWT_SECRET);
-        res.json({ authToken, user });
+        res.json({ authToken, license: user.licenseNo !== "passenger" });
     } catch (error) {
         console.log(error.message);
         res.status(500).send("Internal error occur")

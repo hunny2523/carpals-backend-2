@@ -80,9 +80,10 @@ router.put("/:id/accept", async (req, res) => {
         const request = await Request.findById(req.params.id);
         // find driver from request's userID
         const user = await User.findById(request.userId);
-
-        if (!request.followers.includes(data.user)) {
-            await Request.updateOne({ $push: { followers: data.user } });
+        const passenger=await User.findById(data.user);
+        
+        if (!request.followers.includes(passenger.name)) {
+            const newRequest=await request.updateOne({ $push: { followers: passenger.name } });
         }
         const driver = {
             contact: user.contactNo,
@@ -132,9 +133,15 @@ router.post("/timeline/requests", async (req, res) => {
 
 
 // get user's(driver) all Requests
-router.get("/profile/:username",async (req,res)=>{
+router.post("/profile",async (req,res)=>{
     try{
-        const user=await User.findOne({username:req.params.username});
+        const token = req.header('Authorization').replace('Bearer ', '')
+        const data = jwt.verify(token, JWT_SECRET);
+        if(!data){
+            res.status(403).json("Not allowed")
+        }
+        const user=await User.findById(data.user);
+  
         const Requests=await Request.find({userId:user._id});
         return res.status(200).json(Requests);
     }catch(err){
